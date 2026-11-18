@@ -21,8 +21,9 @@ the paths below need to get updtaed because eveyrhting was oved to
 /Users/don/GitHub/CelebTopFanFollow
 
 ```bash
-KEY="$HOME/Downloads/openclaw-jarvis/ssh-key-2026-05-17.key"
-ZIP="$HOME/Downloads/CelebTopFanFollow.zip"
+PROJECT="$HOME/GitHub/CelebTopFanFollow"
+KEY="$PROJECT/ssh-key-2026-05-17.key"
+ZIP="$PROJECT/CelebTopFanFollow.zip"
 
 ls -l "$KEY" "$ZIP" &&
 chmod 600 "$KEY" &&
@@ -32,7 +33,7 @@ scp -i "$KEY" -o IdentitiesOnly=yes "$ZIP" 'ubuntu@149.118.70.167:~/CelebTopFanF
 If the ZIP has a different name, find it on your Mac:
 
 ```bash
-find "$HOME/Downloads" -type f -iname 'CelebTopFanFollow*.zip' -print
+find "$HOME/GitHub/CelebTopFanFollow" "$HOME/Downloads" -type f -iname 'CelebTopFanFollow*.zip' -print
 ```
 
 Set `ZIP` to the full path that command prints, then rerun the `ls`, `chmod`, and `scp` commands. The remote filename is always `CelebTopFanFollow.zip`. Leave the private `.key` file on your Mac.
@@ -42,7 +43,7 @@ Set `ZIP` to the full path that command prints, then rerun the `ls`, `chmod`, an
 Return to the tab with the `ubuntu@jarvis-vnc` prompt. If you closed it, reconnect **from your Mac**:
 
 ```bash
-ssh -i "$HOME/Downloads/openclaw-jarvis/ssh-key-2026-05-17.key" -o IdentitiesOnly=yes ubuntu@149.118.70.167
+ssh -i "$HOME/GitHub/CelebTopFanFollow/ssh-key-2026-05-17.key" -o IdentitiesOnly=yes ubuntu@149.118.70.167
 ```
 
 If a previous CelebTopFanFollow worker is running, stop it first with `sudo systemctl stop celebtopfanfollow`. On **Ubuntu**, check that the upload landed and that the archive is readable, then install:
@@ -132,6 +133,11 @@ sudo systemctl enable celebtopfanfollow
 sudo systemctl restart celebtopfanfollow
 sudo systemctl status celebtopfanfollow --no-pager
 sudo journalctl -u celebtopfanfollow -n 30 --no-pager
+```
+
+```bash
+sudo systemctl restart celebtopfanfollow &&
+sudo systemctl is-active celebtopfanfollow
 ```
 
 In Telegram, send `/watchlist`. You should see your TikTok handle and Instagram marked **paused**. A newly configured handle may show **awaiting check** until its first poll. For a full alert test, add a public account you control, start the worker, publish a new item, and wait for the next successful poll. The worker skips items published before it added the account and retries queued alerts if Telegram is temporarily unavailable.
