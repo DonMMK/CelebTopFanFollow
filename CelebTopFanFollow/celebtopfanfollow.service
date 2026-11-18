@@ -1,0 +1,21 @@
+[Unit]
+Description=CelebTopFanFollow public profile alerts
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=20min
+StartLimitBurst=3
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=celebtopfanfollow
+StateDirectoryMode=0700
+EnvironmentFile=/etc/celebtopfanfollow/secrets.env
+ExecStart=/usr/bin/python3 /opt/celebtopfanfollow/worker.py
+Restart=on-failure
+RestartSec=2min
+UMask=0077
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

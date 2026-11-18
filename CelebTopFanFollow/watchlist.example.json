@@ -1,0 +1,9 @@
+{
+  "instagram": [],
+  "tiktok": [],
+  "poll_minutes": {
+    "instagram_feed": 60,
+    "tiktok_feed": 60
+  },
+  "feed_results_per_profile": 10
+}
