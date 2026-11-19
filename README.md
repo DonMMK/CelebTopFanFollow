@@ -11,14 +11,69 @@ Neither source monitors Stories. TikTok describes the public embed as a selectio
 
 In the Telegram chat you configured, open the bot's command menu or send `/watchlist`. In a group with multiple bots, use `/watchlist@YourBotName`. The reply groups the usernames by platform and shows which checks have succeeded, failed, are overdue, or haven't run yet. You can also see which platform is paused. Watchlist changes are made on the VM in `watchlist.json` and applied by restarting the service.
 
+## Rotate an exposed Telegram bot token
+
+Use this if a token appeared in a README, Git, or a shared message. Removing it from the document does not invalidate older copies.
+
+### 1. Revoke the old token in Telegram
+
+1. Open the official [@BotFather](https://t.me/BotFather) chat in Telegram.
+2. Send `/mybots`, select the **existing** bot that sent your CelebTopFanFollow test alert, then open **API Token** and choose **Revoke current token**. Confirm the revocation. If BotFather does not display a replacement, send `/token` and select the same bot to generate one.
+3. Copy the replacement token. The bot username and destination chat ID stay the same. Alerts pause between revoking the old token and restarting the worker with the new one. Keep the replacement out of Git, this README, and screenshots.
+
+### 2. Save the replacement on the Oracle Ubuntu VM
+
+If you are already at the `ubuntu@jarvis-vnc` prompt, use that terminal. Otherwise connect **from your Mac**:
+
+```bash
+ssh -i "$HOME/GitHub/CelebTopFanFollow/ssh-key-2026-05-17.key" -o IdentitiesOnly=yes ubuntu@149.118.70.167
+```
+
+On **Ubuntu**, run:
+
+```bash
+sudoedit /etc/celebtopfanfollow/secrets.env
+```
+
+Replace the value on the existing `TELEGRAM_BOT_TOKEN=` line with the new token from BotFather. Put the whole token on one line immediately after the equals sign. Keep `TELEGRAM_CHAT_ID` and any Meta settings as they are. If the editor is Nano, press **Ctrl+O**, **Enter**, then **Ctrl+X**.
+
+Save the file, keep it readable only by its owner, and restart the worker:
+
+```bash
+sudo chmod 600 /etc/celebtopfanfollow/secrets.env &&
+sudo systemctl restart celebtopfanfollow &&
+sudo systemctl is-active celebtopfanfollow
+```
+
+The service reads the replacement from `secrets.env` at startup. You do not need to upload the ZIP or look up the chat ID again. The watchlist and alert history stay on the VM.
+
+### 3. Verify sending and receiving
+
+On **Ubuntu**, send a test alert without printing the token:
+
+```bash
+sudo systemd-run --wait --pipe --collect \
+  --property=EnvironmentFile=/etc/celebtopfanfollow/secrets.env \
+  /usr/bin/python3 /opt/celebtopfanfollow/worker.py --test-telegram
+```
+
+Confirm the test alert arrives, then send a fresh `/watchlist` to the same bot. The test alert confirms outgoing messages, and the watchlist reply confirms the background service receives commands.
+
+If Telegram returns **HTTP 401**, reopen `secrets.env`, check that you saved the complete replacement token for the right bot, and restart again. If the alert arrives but `/watchlist` does not reply, check the worker log:
+
+```bash
+sudo journalctl -u celebtopfanfollow -n 40 --no-pager
+```
+
+Keep OpenClaw stopped if CelebTopFanFollow is taking over this bot. An **HTTP 409** in the log can indicate another polling client or an active webhook. Share any error text without sharing `secrets.env` or the token.
+
+[Telegram's BotFather guide](https://core.telegram.org/bots/features#botfather)
+
 ## 1. Upload the ZIP from your Mac
 
-You are already connected to the Oracle VM as `ubuntu@jarvis-vnc`. The `scp: stat local ... No such file or directory` error came from your Mac before uploading. Your key worked, and the server's home directory listing shows that the ZIP did not arrive.
+If CelebTopFanFollow is already installed and the preview works, jump to [Preview works but watchlist shows zero](#preview-works-but-watchlist-shows-zero). A watchlist edit does not require uploading or reinstalling the app.
 
-[Download the latest CelebTopFanFollow.zip](https://chatgpt.com/library?file_id=libfile_46cf85d121d081919e0fe87508b390c8&account_id=personal) to your Mac's **Downloads** folder. Open a new Mac Terminal tab with **Command–T** and keep your existing SSH session open. Run the following in the **Mac tab**:
-
-the paths below need to get updtaed because eveyrhting was oved to 
-/Users/don/GitHub/CelebTopFanFollow
+Your Mac project folder is `/Users/don/GitHub/CelebTopFanFollow`. Put the archive in that folder before uploading. [Download CelebTopFanFollow.zip](https://chatgpt.com/library?file_id=libfile_46cf85d121d081919e0fe87508b390c8&account_id=personal) if you need a copy. Open a new Terminal tab on your Mac while keeping your SSH session open. Run this in the **Mac tab**:
 
 ```bash
 PROJECT="$HOME/GitHub/CelebTopFanFollow"
@@ -30,13 +85,13 @@ chmod 600 "$KEY" &&
 scp -i "$KEY" -o IdentitiesOnly=yes "$ZIP" 'ubuntu@149.118.70.167:~/CelebTopFanFollow.zip'
 ```
 
-If the ZIP has a different name, find it on your Mac:
+If `ls` says the ZIP is missing, check the project folder and Downloads for a differently named copy:
 
 ```bash
 find "$HOME/GitHub/CelebTopFanFollow" "$HOME/Downloads" -type f -iname 'CelebTopFanFollow*.zip' -print
 ```
 
-Set `ZIP` to the full path that command prints, then rerun the `ls`, `chmod`, and `scp` commands. The remote filename is always `CelebTopFanFollow.zip`. Leave the private `.key` file on your Mac.
+Set `ZIP` to the full path you found and rerun the upload. Keep the private `.key` file on your Mac and out of Git.
 
 ## 2. Install on the Ubuntu VM
 
@@ -68,7 +123,7 @@ On **Ubuntu**, open the service settings:
 sudoedit /etc/celebtopfanfollow/secrets.env
 ```
 
-Fill in `TELEGRAM_BOT_TOKEN`(8595092744:AAEiTi_vgJJ76y76fMjEyvH5k34uLXZyIhY) and, if you know it, the numeric `TELEGRAM_CHAT_ID`(2CKCWXQ6). Leave Meta credentials blank for now. TikTok can be set up on its own.
+Fill in `TELEGRAM_BOT_TOKEN` and the numeric `TELEGRAM_CHAT_ID` shown by the lookup below. If your test alert already arrived, keep the chat ID that worked. If the token appeared in a document or was shared, use the [rotation steps above](#rotate-an-exposed-telegram-bot-token). Leave Meta credentials blank if you are testing TikTok on its own.
 
 If the old OpenClaw gateway is still running for this bot, stop it before looking up the chat ID or starting the new worker. For a CLI install, run `openclaw gateway stop` as the account that owns it. If it runs as a container or a separate service, stop that specific container or service.
 
@@ -92,7 +147,7 @@ sudo systemd-run --wait --pipe --collect \
 
 Continue when the test alert arrives in the right chat.
 
-## 4. Add a TikTok username and preview the feed
+## 4. Add TikTok usernames and preview the feed
 
 On **Ubuntu**:
 
@@ -100,12 +155,12 @@ On **Ubuntu**:
 sudoedit /etc/celebtopfanfollow/watchlist.json
 ```
 
-Use a public TikTok handle you want to follow in place of `tiktok`. Instagram stays paused in this starter config:
+Keep the handles you already saved if the preview works. To add more, put each public TikTok username in the same `tiktok` array as a separate string. Replace these example handles with yours. Instagram stays paused in this starter config:
 
 ```json
 {
   "instagram": [],
-  "tiktok": ["tiktok"],
+  "tiktok": ["first_public_handle", "second_public_handle"],
   "poll_minutes": {
     "instagram_feed": 0,
     "tiktok_feed": 60
@@ -135,14 +190,32 @@ sudo systemctl status celebtopfanfollow --no-pager
 sudo journalctl -u celebtopfanfollow -n 30 --no-pager
 ```
 
+In Telegram, send `/watchlist`. You should see your TikTok handles and Instagram marked **paused** if you used the TikTok-only config. A newly configured handle may show **awaiting check** until its first poll. For a full alert test, add a public account you control, start the worker, publish a new item, and wait for the next successful poll. The worker skips items published before it added the account and retries queued alerts if Telegram is temporarily unavailable.
+
+When the new alerts work, you can remove the old OpenClaw and Jarvis-ish services. For a CLI-managed OpenClaw install, preview with `openclaw uninstall --dry-run --all` first. Keep the VM and the existing backups until you have verified the new setup.
+
+## Preview works but watchlist shows zero
+
+The preview is a separate process that reads the saved file each time it runs. The background service loads the watchlist at startup, so a successful preview can show the new handles while Telegram still reports the old list. The number beside each platform counts configured handles, even before their first check.
+
+On **Ubuntu**, confirm both usernames are under the expected platform key, then restart the service:
+
 ```bash
+sudo /usr/bin/python3 -m json.tool /etc/celebtopfanfollow/watchlist.json &&
 sudo systemctl restart celebtopfanfollow &&
 sudo systemctl is-active celebtopfanfollow
 ```
 
-In Telegram, send `/watchlist`. You should see your TikTok handle and Instagram marked **paused**. A newly configured handle may show **awaiting check** until its first poll. For a full alert test, add a public account you control, start the worker, publish a new item, and wait for the next successful poll. The worker skips items published before it added the account and retries queued alerts if Telegram is temporarily unavailable.
+In the same Telegram chat that received the test alert, **send a new** `/watchlist`. If both handles are under `tiktok`, the new reply should say **TikTok (2)**. **Awaiting check** is normal while a handle waits for its first poll. If the handles are split between platforms, expect one under each.
 
-When the new alerts work, you can remove the old OpenClaw and Jarvis-ish services. For a CLI-managed OpenClaw install, preview with `openclaw uninstall --dry-run --all` first. Keep the VM and the existing backups until you have verified the new setup.
+If the **new** reply still shows zero, inspect which service and worker are running:
+
+```bash
+sudo systemctl show celebtopfanfollow   -p FragmentPath -p DropInPaths -p ExecStart -p MainPID -p ActiveEnterTimestamp
+sudo journalctl -u celebtopfanfollow -n 40 --no-pager
+```
+
+The standard service runs `/usr/bin/python3 /opt/celebtopfanfollow/worker.py` and reads `/etc/celebtopfanfollow/watchlist.json`. If `ExecStart` includes `--config`, check the file it names. If the service logs Telegram HTTP 409, check for another worker or an OpenClaw process using the same bot. If you share these diagnostics, leave out the token and the contents of `secrets.env`.
 
 ## Configure Instagram when ready
 
